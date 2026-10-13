@@ -1,0 +1,26 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: pet
+      POSTGRES_PASSWORD: pet
+      POSTGRES_DB: pet
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  bot:
+    build: .
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://pet:pet@db:5432/pet
+      CACHE_DIR: /app/cache
+    volumes:
+      - render-cache:/app/cache
+    depends_on:
+      - db
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  render-cache:

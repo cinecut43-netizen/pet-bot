@@ -1,0 +1,4 @@
+aiogram>=3.13,<4
+asyncpg>=0.29
+Pillow>=10.4
+tzdata

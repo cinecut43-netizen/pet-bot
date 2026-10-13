@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "canvas": [512, 512],
+  "background": [255, 246, 236],
+  "slot_order": ["body", "neck", "face", "head"],
+  "species": {
+    "cat":   {"name": "Котик",  "anchors": {"head": [256, 92],  "face": [256, 200], "neck": [256, 300], "body": [256, 385]}},
+    "fox":   {"name": "Лисёнок", "anchors": {"head": [256, 92],  "face": [256, 200], "neck": [256, 300], "body": [256, 385]}},
+    "bunny": {"name": "Зайка",  "anchors": {"head": [256, 92],  "face": [256, 200], "neck": [256, 300], "body": [256, 385]}}
+  },
+  "colors": {
+    "ginger":    {"name": "Рыжий",      "rgb": [244, 162, 84]},
+    "gray":      {"name": "Серый",      "rgb": [168, 176, 190]},
+    "cream":     {"name": "Кремовый",   "rgb": [246, 222, 182]},
+    "chocolate": {"name": "Шоколадный", "rgb": [160, 108, 76]},
+    "mint":      {"name": "Мятный",     "rgb": [150, 214, 190]},
+    "lilac":     {"name": "Сиреневый",  "rgb": [196, 170, 232]}
+  },
+  "traits": {
+    "freckles": {"name": "Веснушки", "anchor": "face"},
+    "eyepatch": {"name": "Пятнышко у глаза", "anchor": "face"},
+    "star":     {"name": "Звёздочка на лбу", "anchor": "face"}
+  },
+  "moods": ["happy", "ok", "sad", "sleepy"],
+  "items": {
+    "beanie":  {"name": "Шапочка",  "slot": "head", "starter": true},
+    "bow":     {"name": "Бантик",   "slot": "head", "starter": true},
+    "scarf":   {"name": "Шарфик",   "slot": "neck", "starter": true},
+    "glasses": {"name": "Очки",     "slot": "face", "starter": false},
+    "tshirt":  {"name": "Футболка", "slot": "body", "starter": false}
+  }
+}
