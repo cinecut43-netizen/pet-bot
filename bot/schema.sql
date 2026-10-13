@@ -1,11 +1,11 @@
 -- Схема применяется при каждом старте бота (всё идемпотентно).
 
 CREATE TABLE IF NOT EXISTS users (
+    -- Храним минимум персональных данных (152-ФЗ): только Telegram id,
+    -- без имени и username — для работы бота они не нужны.
     id                 BIGINT PRIMARY KEY,           -- Telegram user id
-    username           TEXT,
-    first_name         TEXT,
     created_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
-    referred_by        BIGINT REFERENCES users(id),  -- кто пригласил (start=ref_ID)
+    referred_by        BIGINT REFERENCES users(id) ON DELETE SET NULL,  -- кто пригласил (start=ref_ID)
     tz                 TEXT NOT NULL DEFAULT 'Europe/Moscow',
     reminder_hour      SMALLINT NOT NULL DEFAULT 19 CHECK (reminder_hour BETWEEN 0 AND 23),
     reminders_enabled  BOOLEAN NOT NULL DEFAULT TRUE,
@@ -50,7 +50,7 @@ CREATE INDEX IF NOT EXISTS care_log_user_date ON care_log (user_id, local_date);
 -- Прочие события для аналитики: start, reminder_sent, позже inline_share и т.п.
 CREATE TABLE IF NOT EXISTS events (
     id         BIGSERIAL PRIMARY KEY,
-    user_id    BIGINT,
+    user_id    BIGINT REFERENCES users(id) ON DELETE CASCADE,
     kind       TEXT NOT NULL,
     payload    JSONB NOT NULL DEFAULT '{}',
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()

@@ -29,16 +29,16 @@ async def db():
 
 
 async def make_pet(db, uid=1, **kw):
-    await db.upsert_user(uid, "u", "U")
+    await db.upsert_user(uid)
     return await db.create_pet(uid, kw.get("name", "Пушок"), "cat", "gray", [], ["beanie", "bow", "scarf"])
 
 
 async def test_upsert_and_referral(db):
-    assert await db.upsert_user(1, "a", "A") is True
-    assert await db.upsert_user(1, "a2", "A") is False
-    await db.upsert_user(2, "b", "B", referred_by=1)
-    await db.upsert_user(3, "c", "C", referred_by=999)  # неизвестный пригласивший
-    await db.upsert_user(4, "d", "D", referred_by=4)    # сам себя
+    assert await db.upsert_user(1) is True
+    assert await db.upsert_user(1) is False
+    await db.upsert_user(2, referred_by=1)
+    await db.upsert_user(3, referred_by=999)  # неизвестный пригласивший
+    await db.upsert_user(4, referred_by=4)    # сам себя
     rows = dict(await db.pool.fetch("SELECT id, referred_by FROM users"))
     assert rows == {1: None, 2: 1, 3: None, 4: None}
 
@@ -112,3 +112,33 @@ async def test_file_id_cache(db):
     await db.save_file_id("k", "AAA")
     await db.save_file_id("k", "BBB")
     assert await db.get_file_id("k") == "BBB"
+
+
+async def test_timezone_moves_reminder_and_day(db):
+    await make_pet(db)
+    await db.pool.execute("UPDATE pets SET created_at = now() - interval '2 days'")
+    await db.set_timezone(1, "Asia/Vladivostok")  # МСК+7
+    vl = timezone(timedelta(hours=10))
+    evening_vl = datetime.now(vl).replace(hour=19, minute=10)
+    assert await db.due_reminders(evening_vl) == [(1, "Пушок")]
+    # 19:10 по Москве — во Владивостоке уже 2 часа ночи, не напоминаем
+    assert await db.due_reminders(datetime.now(MSK).replace(hour=19, minute=10)) == []
+    # дневной лимит сна сбрасывается в полночь по Владивостоку, а не по Москве
+    assert (await db.care(1, "sleep", now=datetime(2026, 5, 1, 23, 30, tzinfo=vl))).status == "ok"
+    assert (await db.care(1, "sleep", now=datetime(2026, 5, 2, 0, 30, tzinfo=vl))).status == "ok"
+    with pytest.raises(ValueError):
+        await db.set_timezone(1, "America/New_York")
+
+
+async def test_delete_user_removes_everything(db):
+    await make_pet(db, uid=1)
+    await db.upsert_user(2, referred_by=1)
+    await db.care(1, "water")
+    await db.log_event(1, "start")
+    assert await db.delete_user(1) is True
+    for table in ("pets", "owned_items", "care_log"):
+        assert await db.pool.fetchval(f"SELECT count(*) FROM {table}") == 0
+    assert await db.pool.fetchval("SELECT count(*) FROM events WHERE user_id = 1") == 0
+    # приглашённый остаётся, но ссылка на удалённого обнуляется
+    assert await db.pool.fetchval("SELECT referred_by FROM users WHERE id = 2") is None
+    assert await db.delete_user(1) is False

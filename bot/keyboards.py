@@ -5,6 +5,7 @@ from aiogram.types import InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from .pet import ACTIONS
+from .regions import TIMEZONES
 from .render import Renderer
 
 
@@ -62,5 +63,29 @@ def wardrobe_kb(renderer: Renderer, owned: list[str], equipped: list[str]) -> In
         mark = "✅ " if item in equipped else ""
         kb.button(text=mark + renderer.items[item]["name"], callback_data=WearCB(item=item))
     kb.button(text="⬅️ К питомцу", callback_data=NavCB(to="pet"))
+    kb.adjust(2)
+    return kb.as_markup()
+
+
+class TzCB(CallbackData, prefix="tz"):
+    key: str
+
+
+class DeleteCB(CallbackData, prefix="del"):
+    confirm: bool
+
+
+def timezone_kb(current: str) -> InlineKeyboardMarkup:
+    kb = InlineKeyboardBuilder()
+    for key, (tz, label) in TIMEZONES.items():
+        kb.button(text=("✅ " if tz == current else "") + label, callback_data=TzCB(key=key))
+    kb.adjust(1)
+    return kb.as_markup()
+
+
+def delete_kb() -> InlineKeyboardMarkup:
+    kb = InlineKeyboardBuilder()
+    kb.button(text="Да, удалить всё", callback_data=DeleteCB(confirm=True))
+    kb.button(text="Нет, оставить", callback_data=DeleteCB(confirm=False))
     kb.adjust(2)
     return kb.as_markup()

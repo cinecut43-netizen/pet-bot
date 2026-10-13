@@ -44,7 +44,7 @@ async def start(message: Message, command: CommandObject, state: FSMContext,
                 db: Database, renderer: Renderer) -> None:
     user = message.from_user
     ref = parse_ref(command.args)
-    is_new = await db.upsert_user(user.id, user.username, user.first_name, ref)
+    is_new = await db.upsert_user(user.id, ref)
     if is_new:
         await db.log_event(user.id, "start", ref=ref, payload=command.args)
 
@@ -105,7 +105,8 @@ async def got_name(message: Message, state: FSMContext, db: Database, renderer: 
     await message.answer(
         f"🎁 В гардеробе тебя ждут подарки: {len(starter)} вещи. "
         "Нажми «Гардероб» под картинкой, чтобы примерить.\n\n"
-        "Каждый вечер я буду мягко напоминать о себе — настроить можно командой /reminder."
+        "Каждый вечер в 19:00 я буду мягко напоминать о себе — настроить можно командой /reminder.\n"
+        "Живёшь не по московскому времени? Выбери свой часовой пояс: /timezone"
     )
 
 

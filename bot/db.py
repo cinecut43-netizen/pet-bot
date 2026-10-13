@@ -10,6 +10,7 @@ from pathlib import Path
 import asyncpg
 
 from . import pet as petlogic
+from .regions import DEFAULT_TZ, TZ_LABELS
 
 SCHEMA = Path(__file__).with_name("schema.sql")
 REMINDER_EFFECT_HOURS = 3  # дела в течение 3 ч после напоминания не считаем «самостоятельными»
@@ -73,8 +74,7 @@ class Database:
 
     # ---------- пользователи ----------
 
-    async def upsert_user(self, user_id: int, username: str | None, first_name: str | None,
-                          referred_by: int | None = None) -> bool:
+    async def upsert_user(self, user_id: int, referred_by: int | None = None) -> bool:
         """Создаёт или обновляет пользователя. Возвращает True, если он новый.
         Пригласивший сохраняется только для новых и только если он сам есть в базе."""
         async with self.pool.acquire() as conn:
@@ -85,15 +85,11 @@ class Database:
                 referred_by = None
             row = await conn.fetchrow(
                 """
-                INSERT INTO users (id, username, first_name, referred_by)
-                VALUES ($1, $2, $3, $4)
-                ON CONFLICT (id) DO UPDATE
-                    SET username = EXCLUDED.username,
-                        first_name = EXCLUDED.first_name,
-                        blocked = FALSE
+                INSERT INTO users (id, referred_by) VALUES ($1, $2)
+                ON CONFLICT (id) DO UPDATE SET blocked = FALSE
                 RETURNING (xmax = 0) AS inserted
                 """,
-                user_id, username, first_name, referred_by,
+                user_id, referred_by,
             )
             return bool(row["inserted"])
 
@@ -108,10 +104,22 @@ class Database:
             user_id, enabled, hour,
         )
 
-    async def get_reminder(self, user_id: int) -> tuple[bool, int]:
+    async def get_reminder(self, user_id: int) -> tuple[bool, int, str]:
         row = await self.pool.fetchrow(
-            "SELECT reminders_enabled, reminder_hour FROM users WHERE id = $1", user_id)
-        return (row["reminders_enabled"], row["reminder_hour"]) if row else (False, 19)
+            "SELECT reminders_enabled, reminder_hour, tz FROM users WHERE id = $1", user_id)
+        return (row["reminders_enabled"], row["reminder_hour"], row["tz"]) if row else (False, 19, DEFAULT_TZ)
+
+    async def set_timezone(self, user_id: int, tz: str) -> None:
+        if tz not in TZ_LABELS:
+            raise ValueError(f"unsupported timezone: {tz}")
+        await self.pool.execute("UPDATE users SET tz = $2 WHERE id = $1", user_id, tz)
+
+    async def delete_user(self, user_id: int) -> bool:
+        """Удаляет все данные пользователя (право на удаление по 152-ФЗ).
+        Питомец, вещи, журнал дел и события удаляются каскадом;
+        у приглашённых им людей ссылка на него обнуляется."""
+        status = await self.pool.execute("DELETE FROM users WHERE id = $1", user_id)
+        return status.endswith(" 1")
 
     # ---------- питомец ----------
 
